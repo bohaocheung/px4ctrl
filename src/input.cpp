@@ -1,7 +1,6 @@
 #include "input.h"
 
-RC_Data_t::RC_Data_t()
-{
+RC_Data_t::RC_Data_t() {
     rcv_stamp = ros::Time(0);
 
     last_mode = -1.0;
@@ -13,20 +12,17 @@ RC_Data_t::RC_Data_t()
     is_command_mode = true;
     enter_command_mode = false;
     toggle_reboot = false;
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         ch[i] = 0.0;
     }
 }
 
-void RC_Data_t::feed(mavros_msgs::RCInConstPtr pMsg)
-{
+void RC_Data_t::feed(mavros_msgs::RCInConstPtr pMsg) {
     msg = *pMsg;
     rcv_stamp = ros::Time::now();
 
-    for (int i = 0; i < 4; i++)
-    {
-        ch[i] = ((double)msg.channels[i] - 1500.0) / 500.0;
+    for (int i = 0; i < 4; i++) {
+        ch[i] = ((double) msg.channels[i] - 1500.0) / 500.0;
         if (ch[i] > DEAD_ZONE)
             ch[i] = (ch[i] - DEAD_ZONE) / (1 - DEAD_ZONE);
         else if (ch[i] < -DEAD_ZONE)
@@ -35,24 +31,21 @@ void RC_Data_t::feed(mavros_msgs::RCInConstPtr pMsg)
             ch[i] = 0.0;
     }
 
-    mode = ((double)msg.channels[4] - 1000.0) / 1000.0;
-    gear = ((double)msg.channels[5] - 1000.0) / 1000.0;
-    reboot_cmd = ((double)msg.channels[7] - 1000.0) / 1000.0;
+    mode = ((double) msg.channels[4] - 1000.0) / 1000.0;
+    gear = ((double) msg.channels[5] - 1000.0) / 1000.0;
+    reboot_cmd = ((double) msg.channels[7] - 1000.0) / 1000.0;
 
     check_validity();
 
-    if (!have_init_last_mode)
-    {
+    if (!have_init_last_mode) {
         have_init_last_mode = true;
         last_mode = mode;
     }
-    if (!have_init_last_gear)
-    {
+    if (!have_init_last_gear) {
         have_init_last_gear = true;
         last_gear = gear;
     }
-    if (!have_init_last_reboot_cmd)
-    {
+    if (!have_init_last_reboot_cmd) {
         have_init_last_reboot_cmd = true;
         last_reboot_cmd = reboot_cmd;
     }
@@ -69,8 +62,7 @@ void RC_Data_t::feed(mavros_msgs::RCInConstPtr pMsg)
         is_hover_mode = false;
 
     // 2
-    if (is_hover_mode)
-    {
+    if (is_hover_mode) {
         if (last_gear < GEAR_SHIFT_VALUE && gear > GEAR_SHIFT_VALUE)
             enter_command_mode = true;
         else if (gear < GEAR_SHIFT_VALUE)
@@ -83,14 +75,12 @@ void RC_Data_t::feed(mavros_msgs::RCInConstPtr pMsg)
     }
 
     // 3
-    if (!is_hover_mode && !is_command_mode)
-    {
+    if (!is_hover_mode && !is_command_mode) {
         if (last_reboot_cmd < REBOOT_THRESHOLD_VALUE && reboot_cmd > REBOOT_THRESHOLD_VALUE)
             toggle_reboot = true;
         else
             toggle_reboot = false;
-    }
-    else
+    } else
         toggle_reboot = false;
 
     last_mode = mode;
@@ -98,33 +88,26 @@ void RC_Data_t::feed(mavros_msgs::RCInConstPtr pMsg)
     last_reboot_cmd = reboot_cmd;
 }
 
-void RC_Data_t::check_validity()
-{
-    if (mode >= -1.1 && mode <= 1.1 && gear >= -1.1 && gear <= 1.1 && reboot_cmd >= -1.1 && reboot_cmd <= 1.1)
-    {
+void RC_Data_t::check_validity() {
+    if (mode >= -1.1 && mode <= 1.1 && gear >= -1.1 && gear <= 1.1 && reboot_cmd >= -1.1 && reboot_cmd <= 1.1) {
         // pass
-    }
-    else
-    {
+    } else {
         ROS_ERROR("RC data validity check fail. mode=%f, gear=%f, reboot_cmd=%f", mode, gear, reboot_cmd);
     }
 }
 
-bool RC_Data_t::check_centered()
-{
+bool RC_Data_t::check_centered() {
     bool centered = abs(ch[0]) < 1e-5 && abs(ch[0]) < 1e-5 && abs(ch[0]) < 1e-5 && abs(ch[0]) < 1e-5;
     return centered;
 }
 
-Odom_Data_t::Odom_Data_t()
-{
+Odom_Data_t::Odom_Data_t() {
     rcv_stamp = ros::Time(0);
     q.setIdentity();
     recv_new_msg = false;
 };
 
-void Odom_Data_t::feed(nav_msgs::OdometryConstPtr pMsg)
-{
+void Odom_Data_t::feed(nav_msgs::OdometryConstPtr pMsg) {
     ros::Time now = ros::Time::now();
 
     msg = *pMsg;
@@ -147,25 +130,21 @@ void Odom_Data_t::feed(nav_msgs::OdometryConstPtr pMsg)
     // check the frequency
     static int one_min_count = 9999;
     static ros::Time last_clear_count_time = ros::Time(0.0);
-    if ( (now - last_clear_count_time).toSec() > 1.0 )
-    {
-        if ( one_min_count < 100 )
-        {
+    if ((now - last_clear_count_time).toSec() > 1.0) {
+        if (one_min_count < 100) {
             ROS_WARN("ODOM frequency seems lower than 100Hz, which is too low!");
         }
         one_min_count = 0;
         last_clear_count_time = now;
     }
-    one_min_count ++;
+    one_min_count++;
 }
 
-Imu_Data_t::Imu_Data_t()
-{
+Imu_Data_t::Imu_Data_t() {
     rcv_stamp = ros::Time(0);
 }
 
-void Imu_Data_t::feed(sensor_msgs::ImuConstPtr pMsg)
-{
+void Imu_Data_t::feed(sensor_msgs::ImuConstPtr pMsg) {
     ros::Time now = ros::Time::now();
 
     msg = *pMsg;
@@ -187,44 +166,36 @@ void Imu_Data_t::feed(sensor_msgs::ImuConstPtr pMsg)
     // check the frequency
     static int one_min_count = 9999;
     static ros::Time last_clear_count_time = ros::Time(0.0);
-    if ( (now - last_clear_count_time).toSec() > 1.0 )
-    {
-        if ( one_min_count < 100 )
-        {
+    if ((now - last_clear_count_time).toSec() > 1.0) {
+        if (one_min_count < 100) {
             ROS_WARN("IMU frequency seems lower than 100Hz, which is too low!");
         }
         one_min_count = 0;
         last_clear_count_time = now;
     }
-    one_min_count ++;
+    one_min_count++;
 }
 
-State_Data_t::State_Data_t()
-{
+State_Data_t::State_Data_t() {
 }
 
-void State_Data_t::feed(mavros_msgs::StateConstPtr pMsg)
-{
+void State_Data_t::feed(mavros_msgs::StateConstPtr pMsg) {
 
     current_state = *pMsg;
 }
 
-ExtendedState_Data_t::ExtendedState_Data_t()
-{
+ExtendedState_Data_t::ExtendedState_Data_t() {
 }
 
-void ExtendedState_Data_t::feed(mavros_msgs::ExtendedStateConstPtr pMsg)
-{
+void ExtendedState_Data_t::feed(mavros_msgs::ExtendedStateConstPtr pMsg) {
     current_extended_state = *pMsg;
 }
 
-Command_Data_t::Command_Data_t()
-{
+Command_Data_t::Command_Data_t() {
     rcv_stamp = ros::Time(0);
 }
 
-void Command_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg)
-{
+void Command_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg) {
 
     msg = *pMsg;
     rcv_stamp = ros::Time::now();
@@ -251,20 +222,17 @@ void Command_Data_t::feed(quadrotor_msgs::PositionCommandConstPtr pMsg)
     yaw_rate = msg.yaw_dot;
 }
 
-Battery_Data_t::Battery_Data_t()
-{
+Battery_Data_t::Battery_Data_t() {
     rcv_stamp = ros::Time(0);
 }
 
-void Battery_Data_t::feed(sensor_msgs::BatteryStateConstPtr pMsg)
-{
+void Battery_Data_t::feed(sensor_msgs::BatteryStateConstPtr pMsg) {
 
     msg = *pMsg;
     rcv_stamp = ros::Time::now();
 
     double voltage = 0;
-    for (size_t i = 0; i < pMsg->cell_voltage.size(); ++i)
-    {
+    for (size_t i = 0; i < pMsg->cell_voltage.size(); ++i) {
         voltage += pMsg->cell_voltage[i];
     }
     volt = 0.8 * volt + 0.2 * voltage; // Naive LPF, cell_voltage has a higher frequency
@@ -273,31 +241,24 @@ void Battery_Data_t::feed(sensor_msgs::BatteryStateConstPtr pMsg)
     percentage = pMsg->percentage;
 
     static ros::Time last_print_t = ros::Time(0);
-    if (percentage > 0.05)
-    {
-        if ((rcv_stamp - last_print_t).toSec() > 10)
-        {
+    if (percentage > 0.05) {
+        if ((rcv_stamp - last_print_t).toSec() > 10) {
             ROS_INFO("[px4ctrl] Voltage=%.3f, percentage=%.3f", volt, percentage);
             last_print_t = rcv_stamp;
         }
-    }
-    else
-    {
-        if ((rcv_stamp - last_print_t).toSec() > 1)
-        {
+    } else {
+        if ((rcv_stamp - last_print_t).toSec() > 1) {
             // ROS_ERROR("[px4ctrl] Dangerous! voltage=%.3f, percentage=%.3f", volt, percentage);
             last_print_t = rcv_stamp;
         }
     }
 }
 
-Takeoff_Land_Data_t::Takeoff_Land_Data_t()
-{
+Takeoff_Land_Data_t::Takeoff_Land_Data_t() {
     rcv_stamp = ros::Time(0);
 }
 
-void Takeoff_Land_Data_t::feed(quadrotor_msgs::TakeoffLandConstPtr pMsg)
-{
+void Takeoff_Land_Data_t::feed(quadrotor_msgs::TakeoffLandConstPtr pMsg) {
 
     msg = *pMsg;
     rcv_stamp = ros::Time::now();
